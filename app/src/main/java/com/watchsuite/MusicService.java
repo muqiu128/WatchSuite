@@ -144,30 +144,60 @@ public class MusicService extends Service {
 
     private void playCurrent() {
         if (index < 0 || index >= paths.size()) return;
-        if (mp != null) {
-            mp.stop();
-            mp.release();
-            mp = null;
+        // WMA 要先转码（数分钟级），统一切到后台线程，避免卡主线程
+        final String src = paths.get(index);
+        new Thread(() -> playSrc(src), "wma-play").start();
+    }
+
+    private void playSrc(String src) {
+        if (index < 0 || index >= paths.size()) return;
+        String playPath = src;
+        if (com.watchsuite.core.Wma.isWma(src)) {
+            err = "WMA 转换中…";
+            runOnUiThread(this::foreground);
+            File f = com.watchsuite.core.Wma.convert(this, src);
+            if (f == null) {
+                err = "WMA 转换失败";
+                runOnUiThread(this::foreground);
+                return;
+            }
+            playPath = f.getAbsolutePath();
         }
-        try {
-            mp = new MediaPlayer();
-            mp.setDataSource(paths.get(index));
-            mp.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mp.setOnCompletionListener(m -> {
-                if (!paths.isEmpty()) {
-                    index = index + 1 >= paths.size() ? 0 : index + 1;
-                    playCurrent();
-                }
-            });
-            mp.setOnErrorListener((m, w, e) -> {
-                err = "解码失败";
-                return true;
-            });
-            mp.prepare();
-            mp.start();
-        } catch (IOException | RuntimeException e) {
-            err = "无法播放";
-        }
+        final String play = playPath;
+        runOnUiThread(() -> {
+            if (index < 0 || index >= paths.size()) return;
+            if (mp != null) {
+                mp.stop();
+                mp.release();
+                mp = null;
+            }
+            try {
+                mp = new MediaPlayer();
+                mp.setDataSource(play);
+                mp.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                mp.setOnCompletionListener(m -> {
+                    if (!paths.isEmpty()) {
+                        index = index + 1 >= paths.size() ? 0 : index + 1;
+                        playCurrent();
+                    }
+                });
+                mp.setOnErrorListener((m, w, e) -> {
+                    err = "解码失败";
+                    foreground();
+                    return true;
+                });
+                mp.prepare();
+                mp.start();
+                err = null;
+            } catch (IOException | RuntimeException e) {
+                err = "无法播放";
+            }
+            foreground();
+        });
+    }
+
+    private void runOnUiThread(Runnable r) {
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(r);
     }
 
     private void foreground() {
@@ -180,7 +210,7 @@ public class MusicService extends Service {
                 ? new Notification.Builder(this, CH)
                 : new Notification.Builder(this);
         b.setContentTitle("腕上管家 · 音乐")
-                .setContentText(curTitle())
+                .setContentText(err != null ? err : curTitle())
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .setOngoing(true);
         startForeground(11, b.build());

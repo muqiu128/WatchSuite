@@ -108,7 +108,10 @@ public class MusicScreen extends Screen {
     @Override
     public void onLeave() {
         h.removeCallbacks(tick);
-        MusicService.stop(act);   // 关掉音乐页就停止播放
+        // 「关于」页里可开「后台继续播放」；默认关——离开音乐页就停止播放
+        if (!com.watchsuite.core.Prefs.bgPlay(act)) {
+            MusicService.stop(act);
+        }
     }
 
     private float listBot() {

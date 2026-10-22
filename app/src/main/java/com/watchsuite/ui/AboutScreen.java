@@ -6,9 +6,9 @@ import android.view.MotionEvent;
 import com.watchsuite.MainActivity;
 import com.watchsuite.Screen;
 import com.watchsuite.Ui;
-import com.watchsuite.core.Fs;
+import com.watchsuite.core.Prefs;
 
-/** 关于页：版本与功能说明。 */
+/** 关于页：版本、功能说明与设置开关。 */
 public class AboutScreen extends Screen {
 
     public AboutScreen(MainActivity a) {
@@ -42,7 +42,13 @@ public class AboutScreen extends Screen {
         Ui.textC(c, "重选表盘形状（当前：" + (MainActivity.SQUARE ? "方形" : "圆形") + "）",
                 233f, 401f, 14f, Ui.TEXT);
 
-        Ui.textC(c, "全套自研 · 无第三方依赖", 233f, 442f, 13f, Ui.FAINT);
+        // 音乐后台播放开关
+        Ui.round(c, 140f, 424f, 326f, 460f, 18f, Ui.SURFACE);
+        boolean on = Prefs.bgPlay(act);
+        Ui.textC(c, "后台继续播放音乐：" + (on ? "开" : "关"),
+                233f, 447f, 14f, on ? 0xFF4CD964 : Ui.TEXT);
+
+        Ui.textC(c, "WMA 有声书自动转码 · 自研无依赖", 233f, 380f, 11f, Ui.FAINT);
     }
 
     @Override
@@ -51,6 +57,11 @@ public class AboutScreen extends Screen {
             if (hitBack(x, y)) { act.pop(); return true; }
             if (x >= 140f && x <= 326f && y >= 378f && y <= 414f) {
                 act.push(new ShapeScreen(act));
+                return true;
+            }
+            if (x >= 140f && x <= 326f && y >= 424f && y <= 460f) {
+                Prefs.bgPlay(act, !Prefs.bgPlay(act));
+                act.ui(this::invalidate);
                 return true;
             }
         }
