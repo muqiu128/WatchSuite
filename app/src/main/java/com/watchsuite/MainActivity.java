@@ -54,8 +54,9 @@ public class MainActivity extends Activity {
         loadSquare(this);
         boostRefreshRate();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        // 透明窗口：主界面拖出时，圆盘外面直接透出手表桌面（计算器同款效果）。
-        // 平时 ShellView 会自己铺满黑底，视觉与不透明完全一致。
+        // 透明窗口：从启动就半透明（运行时转换会闪），拖出时圆盘外直接透出桌面。
+        // 平时 ShellView 自己铺黑底，视觉与不透明完全一致。
+        try { setTranslucent(true); } catch (Throwable ignored) {}
         getWindow().setFormat(android.graphics.PixelFormat.TRANSLUCENT);
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
         shell = new ShellView(this);
@@ -164,6 +165,8 @@ public class MainActivity extends Activity {
         private boolean homeExitDrag;
         private float ex, ey;
         private ValueAnimator exitAnim;
+        // 退出动画已结束、等待最后一帧全透明画面上屏再 finish 的过渡期
+        private boolean exitHold;
 
         // 通用适配：UI 全部按 466×466 逻辑坐标绘制，整体缩放到实际分辨率
         private float k = 1f, offX = 0f, offY = 0f;
@@ -346,7 +349,7 @@ public class MainActivity extends Activity {
         protected void onDraw(Canvas c) {
             super.onDraw(c);
             // 平时铺满不透明黑底；只有主界面拖出/滑出时留透明，让桌面透出来
-            boolean seeThrough = stack.size() == 1 && (homeExitDrag || exitAnim != null);
+            boolean seeThrough = stack.size() == 1 && (homeExitDrag || exitAnim != null || exitHold);
             if (!seeThrough) c.drawColor(Ui.BG);
             int sv = c.save();
             c.translate(offX, offY);
@@ -360,8 +363,8 @@ public class MainActivity extends Activity {
             Screen cur = top();
             if (cur == null) return;
 
-            if (stack.size() == 1 && exitAnim != null) {
-                // 主界面正在滑出：主界面本身也是一块圆盘，整体平移离开
+            if (stack.size() == 1 && (exitAnim != null || exitHold)) {
+                // 主界面正在滑出（或等待上屏后退出）：整体平移离开
                 drawCircled(c, cur, ex);
             } else if (stack.size() == 1 && homeExitDrag) {
                 // 拖动中：主界面圆盘跟手平移，露出的是表盘（屏幕外）
@@ -439,17 +442,19 @@ public class MainActivity extends Activity {
                     if (homeExitDrag) {
                         ex = 0f;
                         ey = 0f;
-                        // 把窗口切成半透明模式，圆盘滑走时透出手表桌面
-                        try { ((MainActivity) getContext()).setTranslucent(true); } catch (Throwable ignored) {}
+                        // 手势开始时快照一次圆盘内容，拖动过程只平移位图，
+                        // 不逐帧重渲染界面（逐帧重画会闪）
+                        discStale = true;
                         return true;
                     }
                     if (!edgeSwipe) s.touch(MotionEvent.ACTION_DOWN, x, y);
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     if (homeExitDrag) {
+                        // 计算器同款：圆盘全程跟手，可按住来回拖；只平移快照，不重画内容
                         ex = x - downX;
                         ey = y - downY;
-                        invalidate();
+                        invalFast();
                         return true;
                     }                    if (edgeSwipe) {
                         float dx = x - downX;
@@ -505,37 +510,20 @@ public class MainActivity extends Activity {
         /** 空白处拖动的距离阈值：超过就滑出回表盘，否则弹回。 */
         private void finishHomeExit() {
             float dist = (float) Math.hypot(ex, ey);
-            if (dist < W * 0.24f) {
+            if (dist < W * 0.5f) {
                 springHomeExit();
                 return;
             }
-            // 与子页面转场一致：主界面也当作一块圆盘，沿水平方向滑走
-            final float startX = ex;
-            final float to = (ex >= 0 ? 1f : -1f) * W;
-            if (exitAnim != null) exitAnim.cancel();
-            exitAnim = ValueAnimator.ofFloat(0f, 1f);
-            exitAnim.setDuration(200);
-            exitAnim.setInterpolator(new DecelerateInterpolator(1.4f));
-            exitAnim.addUpdateListener(a -> {
-                ex = startX + (to - startX) * (float) a.getAnimatedValue();
-                ey = 0f;
-                invalFast();
-            });
-            exitAnim.addListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator an) {
-                    if (an == exitAnim) {
-                        exitAnim = null;
-                        // 圆盘已完全滑出、桌面已在身后：直接关掉这个半透明窗口。
-                        // overridePendingTransition(0,0) 压掉系统「关闭应用」动画，
-                        // 否则会闪一帧应用快照
-                        MainActivity a = (MainActivity) getContext();
-                        a.finish();
-                        try { a.overridePendingTransition(0, 0); } catch (Throwable ignored) {}
-                    }
-                }
-            });
-            exitAnim.start();
+            // 计算器同款：跟手拖动 + 过半才退 + 未过半弹回原位。
+            // 关键：过半松手时【不要】把 ex 弹回 0 —— 保持圆盘在当前拖到的
+            // 位置，先重绘一帧并等它上屏（快速拖动会掉帧，若立刻 finish，
+            // 系统动画会从旧的中间帧开始播，看起来像「闪回来一下再退出」），
+            // 再 finish() 让系统关闭动画从这里继续滑出去。
+            homeExitDrag = false;
+            exitHold = true;   // 等待上屏期间仍走透明+圆盘平移路径，不能闪回普通绘制
+            final MainActivity a = (MainActivity) getContext();
+            invalFast();
+            a.shell.postDelayed(a::finish, 32);
         }
 
         private void springHomeExit() {
@@ -557,7 +545,7 @@ public class MainActivity extends Activity {
                         exitAnim = null;
                         ex = 0f;
                         ey = 0f;
-                        try { ((MainActivity) getContext()).setTranslucent(false); } catch (Throwable ignored) {}
+                        discStale = true;   // 弹回结束，恢复正常内容刷新
                         invalFast();
                     }
                 }
@@ -568,7 +556,13 @@ public class MainActivity extends Activity {
         /** 手势滑够了：接着滑完剩下的 1/3，然后真正出栈。 */
         private void finishPopGesture() {
             final float from = popDx;
-            final float to = W * 0.55f;
+            // 目标点只前进不后退：拖得已超过 0.55W 时再收尾不能往回弹
+            final float to = Math.max(from, W * 0.55f);
+            if (to - from < 1f) {
+                popDx = 0f;
+                popTopNoAnim();
+                return;
+            }
             startFloatAnim(from, to, 170, () -> {
                 popDx = 0f;
                 popTopNoAnim();
