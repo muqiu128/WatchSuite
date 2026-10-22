@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 白色外圈 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.8"
+        android:fillColor="#00000000"
+        android:pathData="M24,54 A30,30 0 1,1 84,54 A30,30 0 1,1 24,54 Z" />
+
+    <!-- 深灰盾牌（上缘圆角 + 两侧直落 + 内凹收腰 + 磨圆底尖） -->
+    <path
+        android:fillColor="#3C3C3C"
+        android:pathData="M45.13,34.87 L62.87,34.87 Q67.05,34.87 67.05,39.05
+L67.05,55.93
+Q61.75,64.48 55.57,73.03
+Q54,75.37 52.43,73.03
+Q46.25,64.48 40.95,55.93
+L40.95,39.05
+Q40.95,34.87 45.13,34.87 Z" />
+
+    <!-- 白色闪电 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M55.30,42.58 L49.11,53.78 L53.67,53.78 L52.04,63.42
+L58.89,52.67 L54.33,52.67 Z" />
+</vector>
