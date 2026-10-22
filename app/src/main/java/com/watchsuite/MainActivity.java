@@ -526,12 +526,12 @@ public class MainActivity extends Activity {
                 public void onAnimationEnd(Animator an) {
                     if (an == exitAnim) {
                         exitAnim = null;
-                        ex = 0f;
-                        ey = 0f;
-                        // 回到表盘：任务整体退到后台，保留进程与数据
-                        ((MainActivity) getContext()).moveTaskToBack(true);
-                        try { ((MainActivity) getContext()).setTranslucent(false); } catch (Throwable ignored) {}
-                        invalidate();
+                        // 圆盘已完全滑出、桌面已在身后：直接关掉这个半透明窗口。
+                        // overridePendingTransition(0,0) 压掉系统「关闭应用」动画，
+                        // 否则会闪一帧应用快照
+                        MainActivity a = (MainActivity) getContext();
+                        a.finish();
+                        try { a.overridePendingTransition(0, 0); } catch (Throwable ignored) {}
                     }
                 }
             });
