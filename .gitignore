@@ -19,3 +19,6 @@ local.properties
 # Signing
 *.jks
 *.keystore
+
+# 归档分卷（超大二进制，不入库；完整包见手机归档或 Releases）
+docs/archive/parts/
