@@ -8,6 +8,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.session.MediaSession;
+import android.media.session.PlaybackState;
 import android.os.Build;
 import android.os.IBinder;
 
@@ -15,7 +17,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-/** 音乐前台服务：静态字段保存播放状态，同进程内直接读取。 */
+/**
+ * 音乐前台服务：静态字段保存播放状态，同进程内直接读取。
+ *
+ * <p>带 MediaSession（framework 自带，无依赖）：系统由此把本应用识别为
+ * 媒体应用，表盘/通知栏会出现媒体控件，随时暂停/切歌，不必进应用。
+ */
 public class MusicService extends Service {
 
     public static final String CH = "music";
@@ -25,6 +32,8 @@ public class MusicService extends Service {
     public static ArrayList<String> titles = new ArrayList<>();
     public static int index = -1;
     public static String err;
+
+    private MediaSession session;
 
     public static void playFile(Context c, File f) {
         paths = new ArrayList<>();
@@ -109,6 +118,65 @@ public class MusicService extends Service {
     }
 
     @Override
+    public void onCreate() {
+        super.onCreate();
+        session = new MediaSession(this, "WatchSuiteMusic");
+        session.setCallback(new MediaSession.Callback() {
+            @Override
+            public void onPlay() {
+                if (mp != null && !mp.isPlaying()) {
+                    mp.start();
+                    foreground();
+                }
+            }
+
+            @Override
+            public void onPause() {
+                if (mp != null && mp.isPlaying()) {
+                    mp.pause();
+                    foreground();
+                }
+            }
+
+            @Override
+            public void onSkipToNext() {
+                nextSong();
+            }
+
+            @Override
+            public void onSkipToPrevious() {
+                prevSong();
+            }
+
+            @Override
+            public void onSeekTo(long pos) {
+                if (mp != null) {
+                    try {
+                        mp.seekTo((int) pos);
+                        foreground();
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        });
+        session.setActive(true);
+    }
+
+    private void nextSong() {
+        if (!paths.isEmpty()) {
+            index = index + 1 >= paths.size() ? 0 : index + 1;
+            playCurrent();
+        }
+    }
+
+    private void prevSong() {
+        if (!paths.isEmpty()) {
+            index = index - 1 < 0 ? paths.size() - 1 : index - 1;
+            playCurrent();
+        }
+    }
+
+    @Override
     public int onStartCommand(Intent intent, int flags, int id) {
         String act = intent != null ? intent.getAction() : "PLAY";
         if ("PLAY".equals(act)) {
@@ -121,16 +189,11 @@ public class MusicService extends Service {
             } else {
                 playCurrent();
             }
+            foreground();
         } else if ("NEXT".equals(act)) {
-            if (!paths.isEmpty()) {
-                index = index + 1 >= paths.size() ? 0 : index + 1;
-                playCurrent();
-            }
+            nextSong();
         } else if ("PREV".equals(act)) {
-            if (!paths.isEmpty()) {
-                index = index - 1 < 0 ? paths.size() - 1 : index - 1;
-                playCurrent();
-            }
+            prevSong();
         } else if ("SEEK".equals(act)) {
             if (mp != null) {
                 try {
@@ -138,6 +201,7 @@ public class MusicService extends Service {
                 } catch (Throwable ignored) {
                 }
             }
+            foreground();
         }
         return START_NOT_STICKY;
     }
@@ -200,7 +264,9 @@ public class MusicService extends Service {
         new android.os.Handler(android.os.Looper.getMainLooper()).post(r);
     }
 
+    /** 同步 MediaSession 状态 + 刷新前台通知。 */
     private void foreground() {
+        syncSession();
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) {
             nm.createNotificationChannel(new NotificationChannel(CH, "音乐播放",
@@ -212,12 +278,62 @@ public class MusicService extends Service {
         b.setContentTitle("腕上管家 · 音乐")
                 .setContentText(err != null ? err : curTitle())
                 .setSmallIcon(android.R.drawable.ic_media_play)
-                .setOngoing(true);
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setCategory(Notification.CATEGORY_TRANSPORT);
+        if (session != null) {
+            // MediaStyle + session token：系统据此把通知识别为媒体控制，
+            // 表盘上会出现媒体 chip（播放/暂停/切歌）
+            b.setStyle(new Notification.MediaStyle()
+                    .setMediaSession(session.getSessionToken()));
+        }
         startForeground(11, b.build());
+    }
+
+    private void syncSession() {
+        if (session == null) return;
+        int state;
+        if (err != null) {
+            // 转码是正常等待，不是错误
+            state = err.contains("转换") ? PlaybackState.STATE_BUFFERING
+                    : PlaybackState.STATE_ERROR;
+        } else {
+            state = playing() ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
+        }
+        PlaybackState.Builder pb = new PlaybackState.Builder()
+                .setActions(PlaybackState.ACTION_PLAY
+                        | PlaybackState.ACTION_PAUSE
+                        | PlaybackState.ACTION_PLAY_PAUSE
+                        | PlaybackState.ACTION_SKIP_TO_NEXT
+                        | PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                        | PlaybackState.ACTION_SEEK_TO)
+                .setState(state, pos(), playing() ? 1f : 0f);
+        if (state == PlaybackState.STATE_ERROR) {
+            pb.setErrorMessage(err);
+        }
+        session.setPlaybackState(pb.build());
+
+        android.media.MediaMetadata.Builder mb = new android.media.MediaMetadata.Builder()
+                .putString(android.media.MediaMetadata.METADATA_KEY_TITLE, curTitle())
+                .putString(android.media.MediaMetadata.METADATA_KEY_ARTIST, "腕上管家");
+        long d = dur();
+        if (d > 0) {
+            mb.putLong(android.media.MediaMetadata.METADATA_KEY_DURATION, d);
+        }
+        session.setMetadata(mb.build());
+        session.setActive(true);
     }
 
     @Override
     public void onDestroy() {
+        if (session != null) {
+            try {
+                session.setActive(false);
+                session.release();
+            } catch (Throwable ignored) {
+            }
+            session = null;
+        }
         if (mp != null) {
             try {
                 mp.stop();

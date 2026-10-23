@@ -73,13 +73,17 @@ public class MusicScreen extends Screen {
         invalidate();
     }
 
-    /** 后台补齐每首歌的时长（MediaMetadataRetriever，逐条缓存）。 */
+    /** 后台补齐每首歌的时长（MediaMetadataRetriever，逐条缓存）。WMA 走 Wma 的转码缓存。 */
     private void fetchDurs() {
         final ArrayList<MediaScan.Item> snapshot = new ArrayList<>(items);
         DUR_POOL.execute(() -> {
             android.media.MediaMetadataRetriever mm = new android.media.MediaMetadataRetriever();
             int n = 0;
             for (MediaScan.Item it : snapshot) {
+                if (com.watchsuite.core.Wma.isWma(it.path)) {
+                    // Retriever 读不了 WMA；时长来自转码缓存（Wma.cachedDur），不在此处理
+                    continue;
+                }
                 if (DUR.containsKey(it.path)) continue;
                 long d = 0;
                 try {
@@ -101,6 +105,10 @@ public class MusicScreen extends Screen {
 
     private long durOf(MediaScan.Item it) {
         if (it.duration > 0) return it.duration;
+        if (com.watchsuite.core.Wma.isWma(it.path)) {
+            // 有转码缓存的话能直接拿到时长；刚转完也会在这里被发现
+            return com.watchsuite.core.Wma.cachedDur(act, it.path);
+        }
         Long d = DUR.get(it.path);
         return d == null ? 0 : d;
     }
@@ -150,7 +158,9 @@ public class MusicScreen extends Screen {
                     cur ? Ui.ACCENT : Ui.TEXT);
             String sub;
             long d = durOf(it);
+            boolean wma = com.watchsuite.core.Wma.isWma(it.path);
             if (d > 0) sub = MediaScan.dur(d) + " · " + Fs.human(it.size);
+            else if (wma) sub = "WMA · 播放转码后显示时长 · " + Fs.human(it.size);
             else if (DUR.containsKey(it.path)) sub = "时长未知 · " + Fs.human(it.size);
             else sub = Fs.human(it.size);
             Ui.textL(c, sub, g.right + 12f, r.top + 47f, 13f, Ui.FAINT);
