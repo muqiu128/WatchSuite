@@ -37,18 +37,11 @@ public class AboutScreen extends Screen {
         Ui.textL(c, "QQ：2176974735", 86f, 336f, 14f, Ui.DIM);
         Ui.textL(c, "微信：shiMuQiuY", 86f, 358f, 14f, Ui.DIM);
 
-        // 重新选择表盘形状
+        // 设置入口
         Ui.round(c, 140f, 378f, 326f, 414f, 18f, Ui.SURFACE);
-        Ui.textC(c, "重选表盘形状（当前：" + (MainActivity.SQUARE ? "方形" : "圆形") + "）",
-                233f, 401f, 14f, Ui.TEXT);
+        Ui.textC(c, "设置", 233f, 401f, 14f, Ui.TEXT);
 
-        // 音乐后台播放开关
-        Ui.round(c, 140f, 424f, 326f, 460f, 18f, Ui.SURFACE);
-        boolean on = Prefs.bgPlay(act);
-        Ui.textC(c, "后台继续播放音乐：" + (on ? "开" : "关"),
-                233f, 447f, 14f, on ? 0xFF4CD964 : Ui.TEXT);
-
-        Ui.textC(c, "WMA 有声书自动转码 · 自研无依赖", 233f, 380f, 11f, Ui.FAINT);
+        Ui.textC(c, "WMA 有声书自动转码 · 自研无依赖", 233f, 438f, 11f, Ui.FAINT);
     }
 
     @Override
@@ -56,12 +49,7 @@ public class AboutScreen extends Screen {
         if (action == MotionEvent.ACTION_UP) {
             if (hitBack(x, y)) { act.pop(); return true; }
             if (x >= 140f && x <= 326f && y >= 378f && y <= 414f) {
-                act.push(new ShapeScreen(act));
-                return true;
-            }
-            if (x >= 140f && x <= 326f && y >= 424f && y <= 460f) {
-                Prefs.bgPlay(act, !Prefs.bgPlay(act));
-                act.ui(this::invalidate);
+                act.push(new SettingsScreen(act));
                 return true;
             }
         }

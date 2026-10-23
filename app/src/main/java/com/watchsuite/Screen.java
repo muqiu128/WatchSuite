@@ -9,7 +9,7 @@ public abstract class Screen {
     public static final float W = 466f, H = 466f, CX = 233f, CY = 233f;
 
     protected final MainActivity act;
-    protected final RectF backRect = new RectF(50f, 48f, 102f, 100f);
+    protected final RectF backRect = new RectF(65f, 69f, 115f, 119f);
 
     public Screen(MainActivity a) {
         this.act = a;
@@ -61,14 +61,14 @@ public abstract class Screen {
         Ui.circle(c, backRect.centerX(), backRect.centerY(), 25f, Ui.SURFACE);
         Ui.textC(c, "‹", backRect.centerX(), backRect.centerY() + 11f, 34f, Ui.TEXT);
         float titleMax = right == null ? 250f : 180f;
-        Ui.textLBold(c, Ui.ellipsize(title, 24f, titleMax), 116f, 88f, 24f, Ui.TEXT);
+        Ui.textLBold(c, Ui.ellipsize(title, 24f, titleMax), 116f, 108f, 24f, Ui.TEXT);
         if (right != null) {
-            Ui.textR(c, right, 402f, 86f, 20f, Ui.ACCENT);
+            Ui.textR(c, right, 394f, 106f, 20f, Ui.ACCENT);
         }
     }
 
     protected float contentTop() {
-        return 118f;
+        return 132f;
     }
 
     protected void invalidate() {

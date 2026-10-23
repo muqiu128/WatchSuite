@@ -32,7 +32,7 @@ public class AppsScreen extends Screen {
     private final Scroll sc = new Scroll(this::invalidate);
     private boolean loading = true;
 
-    private long totalSpace = 0, appTotal = 0;
+    private long totalSpace = 0, availSpace = 0, appTotal = 0;
     /** 选中的应用下标，-1 表示没有打开详情面板。 */
     private int sel = -1;
 
@@ -56,6 +56,7 @@ public class AppsScreen extends Screen {
             ArrayList<Apps.App> list = Apps.list(act, snap);
             act.ui(() -> {
                 totalSpace = sp[0];
+                availSpace = sp[1];
                 apply(list);
             });
         });
@@ -83,15 +84,19 @@ public class AppsScreen extends Screen {
 
     @Override
     public void draw(Canvas c) {
+        // 表圈空间圆环：纯装饰，不参与触摸；颜色随紧张度绿→黄→红
+        Ui.bezelRing(c, totalSpace > 0
+                ? (float) Math.min(1.0, (double) (totalSpace - availSpace) / totalSpace) : 0f,
+                MainActivity.SQUARE);
+
         header(c, "应用占用", items.isEmpty() ? null : items.size() + " 个");
 
         float ratio = totalSpace > 0 ? (float) Math.min(1.0, (double) appTotal / totalSpace) : 0f;
-        Ui.textLBold(c, loading ? "…" : Fs.human(appTotal), 66f, 140f, 24f, Ui.TEXT);
+        Ui.textLBold(c, loading ? "…" : Fs.human(appTotal), 66f, 148f, 24f, Ui.TEXT);
         String right = totalSpace > 0
                 ? String.format(Locale.US, "占存储 %d%%", Math.round(ratio * 100))
                 : "统计中";
-        Ui.textR(c, right, 404f, 138f, 14f, Ui.DIM);
-        Ui.bar(c, new RectF(66f, 150f, 404f, 158f), ratio, Ui.ACCENT, Ui.SURFACE2);
+        Ui.textR(c, right, 404f, 146f, 14f, Ui.tension(ratio));
 
         long maxSize = 1;
         for (Apps.App a : items) maxSize = Math.max(maxSize, a.size);

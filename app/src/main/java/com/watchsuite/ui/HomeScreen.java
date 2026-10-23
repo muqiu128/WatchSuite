@@ -22,7 +22,6 @@ public class HomeScreen extends Screen {
             0xFF3DDC84, 0xFFFFB454, 0xFFFF8FA3, 0xFF66B3FF};
 
     private final RectF[] tiles = new RectF[8];
-    private final RectF bar = new RectF(79f, 92f, 387f, 104f);
     /** 最下面一行的版本信息，点它进关于页。 */
     private final RectF verRect = new RectF(139f, 392f, 327f, 428f);
 
@@ -31,19 +30,38 @@ public class HomeScreen extends Screen {
 
     public HomeScreen(MainActivity a) {
         super(a);
-        float w = 148f, h = 52f, gx = 12f, gy = 8f;
-        for (int i = 0; i < 8; i++) {
-            int r = i / 2, col = i % 2;
-            float l = 79f + col * (w + gx);
-            float t = 152f + r * (h + gy);
-            tiles[i] = new RectF(l, t, l + w, t + h);
-        }
+        if (MainActivity.SQUARE) layoutSquare(); else layoutRound();
         try {
             String v = a.getPackageManager()
                     .getPackageInfo(a.getPackageName(), 0).versionName;
             if (v != null && v.length() > 0) ver = v;
         } catch (Throwable ignored) {
         }
+    }
+
+    /** 圆表布局：2 列 × 4 行。 */
+    private void layoutRound() {
+        float w = 156f, h = 58f, gx = 14f, gy = 9f;
+        for (int i = 0; i < 8; i++) {
+            int r = i / 2, col = i % 2;
+            float l = 71f + col * (w + gx);
+            float t = 120f + r * (h + gy);
+            tiles[i] = new RectF(l, t, l + w, t + h);
+        }
+    }
+
+    /** 方表布局：3 列（3+3+2 居中），面积全用上。 */
+    private void layoutSquare() {
+        float w = 138f, h = 64f, gx = 13f, gy = 10f;
+        float l0 = (466f - (3 * w + 2 * gx)) / 2f;
+        for (int i = 0; i < 8; i++) {
+            int r = i / 3, col = i % 3;
+            if (i == 7) col = 2;   // 快传放第三排第三个，与分析左右对称
+            float l = l0 + col * (w + gx);
+            float t = 112f + r * (h + gy);
+            tiles[i] = new RectF(l, t, l + w, t + h);
+        }
+        verRect.set(90f, 352f, 376f, 388f);
     }
 
     @Override
@@ -70,24 +88,26 @@ public class HomeScreen extends Screen {
 
     @Override
     public void draw(Canvas c) {
-        Ui.textC(c, "腕上管家", 233f, 74f, 24f, Ui.TEXT);
-
         float ratio = total > 0 ? (float) (total - avail) / total : 0f;
-        Ui.bar(c, bar, ratio, Ui.ACCENT, Ui.SURFACE2);
+
+        // 表圈空间圆环：纯装饰，不参与触摸；颜色随紧张度绿→黄→红
+        Ui.bezelRing(c, ratio, MainActivity.SQUARE);
+
+        Ui.textC(c, "腕上管家", 233f, 62f, 22f, Ui.TEXT);
         String info = total > 0
-                ? String.format(Locale.US, "已用 %d%% · 剩 %s / %s", Math.round(ratio * 100),
-                Fs.human(avail), Fs.human(total))
+                ? String.format(Locale.US, "已用 %d%% · 剩 %s", Math.round(ratio * 100),
+                Fs.human(avail))
                 : "读取存储中…";
-        Ui.textC(c, info, 233f, 130f, 16f, Ui.DIM);
+        Ui.textC(c, info, 233f, 88f, 13f, Ui.tension(ratio));
 
         for (int i = 0; i < 8; i++) {
             RectF t = tiles[i];
             Ui.round(c, t, 16f, Ui.SURFACE);
-            RectF g = new RectF(t.left + 12f, t.centerY() - 15f, t.left + 42f, t.centerY() + 15f);
+            RectF g = new RectF(t.left + 12f, t.centerY() - 16f, t.left + 44f, t.centerY() + 16f);
             Ui.round(c, g, 9f, Ui.alpha(COLORS[i], 0x26));
-            Ui.textC(c, GLYPHS[i], g.centerX(), g.centerY() + 7f, 17f, COLORS[i]);
-            Ui.textLBold(c, NAMES[i], t.left + 50f, t.top + 23f, 20f, Ui.TEXT);
-            Ui.textL(c, SUBS[i], t.left + 50f, t.top + 42f, 13f, Ui.FAINT);
+            Ui.textC(c, GLYPHS[i], g.centerX(), g.centerY() + 7f, 18f, COLORS[i]);
+            Ui.textLBold(c, NAMES[i], t.left + 52f, t.top + 25f, 20f, Ui.TEXT);
+            Ui.textL(c, SUBS[i], t.left + 52f, t.top + 45f, 13f, Ui.FAINT);
         }
 
         // 版本信息固定在最下面一行

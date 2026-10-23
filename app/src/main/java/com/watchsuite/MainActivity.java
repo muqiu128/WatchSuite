@@ -15,6 +15,7 @@ import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 
 import com.watchsuite.core.Perm;
+import com.watchsuite.core.Prefs;
 import com.watchsuite.ui.HomeScreen;
 import com.watchsuite.ui.PermScreen;
 
@@ -61,6 +62,9 @@ public class MainActivity extends Activity {
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
         shell = new ShellView(this);
         setContentView(shell);
+        // 读取界面偏好：列表动效 / 空间条位置（Ui 静态开关，绘制时直接判断）
+        Ui.FLAT_FLOW = Prefs.flatFlow(this);
+        Ui.RING_TOP = Prefs.ringTop(this);
         shell.push(new HomeScreen(this), false);
         hideSystemUi();
         // 上次已允许过「读取应用列表」时，尽早把授权写回 AppOps：

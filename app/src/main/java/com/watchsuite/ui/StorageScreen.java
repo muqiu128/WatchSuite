@@ -101,15 +101,19 @@ public class StorageScreen extends Screen {
 
     @Override
     public void draw(Canvas c) {
+        // 表圈空间圆环/顶端条：显示全盘已用比例，纯装饰
+        Ui.bezelRing(c, total > 0 ? (float) Math.min(1.0,
+                (double) (total - avail) / total) : 0f, MainActivity.SQUARE);
+
         header(c, "存储分析", null);
 
         float ratio = total > 0 && stats != null
                 ? (float) Math.min(1.0, (double) stats.total / total) : 0f;
-        Ui.ring(c, 233f, 176f, 62f, 14f, ratio, Ui.ACCENT, Ui.SURFACE2);
-        Ui.textC(c, scanning ? "…" : Math.round(ratio * 100) + "%", 233f, 186f, 26f, Ui.TEXT);
+        // 中间的环形图已去掉（表圈圆环就是空间占比），改成大字数字
+        Ui.textC(c, scanning ? "…" : Math.round(ratio * 100) + "%", 233f, 186f, 44f, Ui.TEXT);
         Ui.textC(c, scanning ? "扫描中…"
                         : "已用 " + Fs.human(stats.total) + " · 剩 " + Fs.human(avail),
-                233f, 236f, 14f, Ui.DIM);
+                233f, 226f, 14f, Ui.DIM);
 
         c.save();
         c.clipRect(0, LIST_TOP, W, LIST_BOT);

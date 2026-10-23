@@ -31,6 +31,11 @@ public final class Ui {
     private static final Paint P = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static final Paint T = new Paint(Paint.ANTI_ALIAS_FLAG);
 
+    /** 列表动效：false=圆弧透视（上下变小），true=等底信息流。由设置页写入。 */
+    public static boolean FLAT_FLOW = false;
+    /** 空间进度条位置：false=表圈圆环，true=固定在最上端。由设置页写入。 */
+    public static boolean RING_TOP = false;
+
     private Ui() {}
 
     public static void fill(Canvas c, RectF r, int color) {
@@ -159,6 +164,76 @@ public final class Ui {
         P.setStrokeCap(Paint.Cap.BUTT);
     }
 
+    /**
+     * 空间紧张度配色：占用率 0 → 绿，0.5 → 黄，1 → 红（两段线性插值）。
+     */
+    public static int tension(float ratio) {
+        ratio = Math.max(0f, Math.min(1f, ratio));
+        final int GREEN = 0xFF3DDC84, YELLOW = 0xFFFFC65C, RED = 0xFFFF5A5A;
+        if (ratio < 0.5f) return lerpColor(GREEN, YELLOW, ratio * 2f);
+        return lerpColor(YELLOW, RED, (ratio - 0.5f) * 2f);
+    }
+
+    private static int lerpColor(int a, int b, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
+        int br = (b >> 16) & 0xFF, bg2 = (b >> 8) & 0xFF, bb = b & 0xFF;
+        int r = Math.round(ar + (br - ar) * t);
+        int g = Math.round(ag + (bg2 - ag) * t);
+        int bl = Math.round(ab + (bb - ab) * t);
+        return 0xFF000000 | (r << 16) | (g << 8) | bl;
+    }
+
+    /**
+     * 表圈空间圆环：沿屏幕最外缘一圈，纯装饰，不参与任何触摸判定。
+     * 圆表画圆弧；方表画圆角矩形描边（走 PathMeasure 截取进度段）。
+     * 调用方在 draw 最开始画（位于所有卡片之下）。
+     */
+    public static void bezelRing(Canvas c, float ratio, boolean square) {
+        ratio = Math.max(0f, Math.min(1f, ratio));
+        int col = tension(ratio);
+        if (RING_TOP) {
+            // 顶端模式：细横条固定在屏幕上沿（避开屏幕最顶部被遮罩裁掉的区域）
+            float bl = square ? 60f : 122f, br = 466f - bl;
+            RectF bar = new RectF(bl, 26f, br, 34f);
+            P.setStyle(Paint.Style.FILL);
+            bar(c, bar, ratio, col, LINE);
+            return;
+        }
+        final float stroke = 7f, inset = stroke / 2f + 3f;
+        P.setStyle(Paint.Style.STROKE);
+        P.setStrokeWidth(stroke);
+        if (!square) {
+            float rad = 233f - inset;
+            RectF box = new RectF(233f - rad, 233f - rad, 233f + rad, 233f + rad);
+            P.setStrokeCap(Paint.Cap.ROUND);
+            P.setColor(LINE);
+            c.drawArc(box, 0, 360, false, P);
+            if (ratio > 0.005f) {
+                P.setColor(col);
+                c.drawArc(box, -90, 360f * ratio, false, P);
+            }
+            P.setStrokeCap(Paint.Cap.BUTT);
+        } else {
+            android.graphics.Path path = new android.graphics.Path();
+            path.addRoundRect(inset, inset, 466f - inset, 466f - inset, 54f, 54f,
+                    android.graphics.Path.Direction.CW);
+            android.graphics.PathMeasure pm = new android.graphics.PathMeasure(path, false);
+            float len = pm.getLength();
+            P.setColor(LINE);
+            c.drawPath(path, P);
+            if (ratio > 0.005f) {
+                android.graphics.Path seg = new android.graphics.Path();
+                // 起点挪到顶边中点：圆角矩形路径起点在右上角弧的中点，正好接近顶部
+                pm.getSegment(0, len * ratio, seg, true);
+                P.setColor(col);
+                c.drawPath(seg, P);
+            }
+        }
+        P.setStyle(Paint.Style.FILL);
+    }
+
+
     /** 列表行的类型图标：圆角方块 + 单字。 */
     public static void glyph(Canvas c, RectF r, String ch, int color) {
         round(c, r, r.width() * 0.28f, alpha(color, 0x26));
@@ -239,6 +314,7 @@ public final class Ui {
      */
     public static RectF flow(float slotL, float slotT, float slotR, float slotB,
                              float viewT, float viewB) {
+        if (FLAT_FLOW) return new RectF(slotL, slotT, slotR, slotB);   // 等底信息流：不缩放
         float cy = (slotT + slotB) * 0.5f;
         float mid = (viewT + viewB) * 0.5f;
         float half = (viewB - viewT) * 0.5f;
@@ -255,6 +331,7 @@ public final class Ui {
      * 位置渲染，上面/下面留一点空（只在下沉时可见）。
      */
     public static float flowPad(float rowH, float viewT, float viewB) {
+        if (FLAT_FLOW) return 6f;   // 等底模式不需要首尾下沉，留一点空隙即可
         float mid = (viewT + viewB) * 0.5f;
         float half = (viewB - viewT) * 0.5f;
         float target = mid - 0.28f * half;   // 首卡中心放到 d≈0.28（s≈0.97）

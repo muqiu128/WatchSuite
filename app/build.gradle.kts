@@ -10,8 +10,8 @@ android {
         applicationId = "com.watchsuite"
         minSdk = 26
         targetSdk = 30
-        versionCode = 35
-        versionName = "1.23.0"
+        versionCode = 43
+        versionName = "2.1.3"
     }
 
     buildTypes {
