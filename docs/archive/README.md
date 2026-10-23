@@ -6,7 +6,6 @@
 
 | 路径 | 内容 |
 |---|---|
-| `parts/part_00~02.bin` | `腕上管家_完整恢复包.zip` 的分卷（206.9 MB，超过 GitHub 100MB 限制所以切开） |
 | `chat/腕上管家开发对话记录.md` | 全部 987 条开发对话（Markdown，纯文本可读） |
 | `chat/腕上管家开发对话记录.html` | 同上，手机友好的气泡排版，浏览器直接打开 |
 | `chat/原始会话日志.jsonl` | 未经加工的原始会话数据（22 MB），最完整的上下文来源 |
@@ -20,34 +19,16 @@
 - `apk/` — WatchSuite v1.13 / 1.14 / 1.15 / 1.17 / 1.18 / 1.20 / 1.21 / 1.31 各版本，以及 VoiceClips 成品
 - `tools/` — `build-apk.sh` 等零依赖构建脚本
 
-## 还原完整恢复包
+## 关于完整恢复包
 
-分卷是按字节顺序切分的，直接拼接即可。
+`腕上管家_完整恢复包.zip`（206.9 MB）因为超过 GitHub 单文件 100MB 限制，**不在本仓库内**。它同时存放在：
 
-**Linux / macOS / Git Bash：**
-```bash
-cd docs/archive/parts
-cat part_00.bin part_01.bin part_02.bin > 腕上管家_完整恢复包.zip
-md5sum 腕上管家_完整恢复包.zip
-```
+- 开发机的 `outputs/` 与手机归档文件夹中
+- Release 附件（如有）
 
-**Windows PowerShell：**
-```powershell
-cd docs\archive\parts
-$out = [System.IO.File]::Create("..\..\腕上管家_完整恢复包.zip")
-"part_00.bin","part_01.bin","part_02.bin" | ForEach-Object {
-    $in = [System.IO.File]::OpenRead($_)
-    $in.CopyTo($out)
-    $in.Close()
-}
-$out.Close()
-```
+它相对本目录多出的内容：四份文档级恢复资料、`projects/`（含 `.git` 历史的完整源码）、`tools/`（构建脚本）、全部历史 APK（含 VoiceClips 71MB 成品）。
 
-**校验值（MD5）：**
-```
-58677b67c5652d86e187ca6237c6f160
-```
-如果对不上，说明下载过程出错，重新下载对应的分卷。
+本目录下的 `apk/` + `chat/` + `memory/` 已覆盖日常回溯所需；真要重建开发环境，用本仓库的源码 + `tools/build-apk.sh` 就够了。
 
 ## 快速恢复开发环境
 
