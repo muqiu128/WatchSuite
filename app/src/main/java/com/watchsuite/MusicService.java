@@ -281,13 +281,31 @@ public class MusicService extends Service {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_TRANSPORT);
+        // 通知里的三个实体按钮：上一首 / 暂停(播放) / 下一首
+        // —— 即使表盘不显示媒体 chip，下拉通知栏也能一键暂停
+        b.addAction(new Notification.Action.Builder(
+                android.R.drawable.ic_media_previous, "上一首", serviceIntent("PREV", 101)).build());
+        b.addAction(new Notification.Action.Builder(
+                playing() ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play,
+                playing() ? "暂停" : "播放", serviceIntent("TOGGLE", 102)).build());
+        b.addAction(new Notification.Action.Builder(
+                android.R.drawable.ic_media_next, "下一首", serviceIntent("NEXT", 103)).build());
         if (session != null) {
             // MediaStyle + session token：系统据此把通知识别为媒体控制，
             // 表盘上会出现媒体 chip（播放/暂停/切歌）
             b.setStyle(new Notification.MediaStyle()
-                    .setMediaSession(session.getSessionToken()));
+                    .setMediaSession(session.getSessionToken())
+                    .setShowActionsInCompactView(0, 1, 2));
         }
         startForeground(11, b.build());
+    }
+
+    private android.app.PendingIntent serviceIntent(String action, int code) {
+        Intent in = new Intent(this, MusicService.class).setAction(action);
+        int flags = Build.VERSION.SDK_INT >= 23
+                ? android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE
+                : android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+        return android.app.PendingIntent.getService(this, code, in, flags);
     }
 
     private void syncSession() {
