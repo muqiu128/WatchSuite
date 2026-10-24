@@ -425,6 +425,20 @@ public class MainActivity extends Activity {
         }
 
         @Override
+        public boolean onGenericMotionEvent(MotionEvent e) {
+            // 侧边旋钮/表冠：ACTION_SCROLL + AXIS_SCROLL（部分 ROM 用 AXIS_VSCROLL）
+            if (e.getAction() == MotionEvent.ACTION_SCROLL) {
+                float d = e.getAxisValue(MotionEvent.AXIS_SCROLL);
+                if (d == 0f) d = e.getAxisValue(MotionEvent.AXIS_VSCROLL);
+                if (d != 0f) {
+                    Screen s = top();
+                    if (s != null && !animating && s.rotary(d)) return true;
+                }
+            }
+            return super.onGenericMotionEvent(e);
+        }
+
+        @Override
         public boolean onTouchEvent(MotionEvent e) {
             Screen s = top();
             if (s == null) return true;

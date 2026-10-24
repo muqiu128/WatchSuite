@@ -248,6 +248,15 @@ public class AppsScreen extends Screen {
         return true;
     }
 
+    /** 旋钮滚动列表；详情面板打开时不滚。 */
+    @Override
+    public boolean rotary(float delta) {
+        if (sel >= 0) return true;
+        sc.scrollBy(delta * 96f);
+        invalidate();
+        return true;
+    }
+
     @Override
     public boolean back() {
         if (sel >= 0) {

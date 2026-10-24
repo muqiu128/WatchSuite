@@ -357,7 +357,13 @@ public class FilesScreen extends Screen {
         }
     }
 
+    /** 旋钮滚动列表。 */
     @Override
+    public boolean rotary(float delta) {
+        sc.scrollBy(delta * 96f);
+        invalidate();
+        return true;
+    }
     public boolean back() {
         if (mode != 0) {
             mode = 0;

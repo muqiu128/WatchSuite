@@ -290,7 +290,13 @@ public class CleanScreen extends Screen {
         });
     }
 
+    /** 旋钮滚动列表。 */
     @Override
+    public boolean rotary(float delta) {
+        sc.scrollBy(delta * 96f);
+        invalidate();
+        return true;
+    }
     public boolean back() {
         if (confirmMode != 0) {
             confirmMode = 0;

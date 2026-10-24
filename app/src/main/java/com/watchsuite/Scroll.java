@@ -73,6 +73,14 @@ public final class Scroll {
         vy = 0f;
     }
 
+    /** 旋钮/滚轮这类离散滚动输入：直接位移并带一点惯性手感。 */
+    public void scrollBy(float d) {
+        stopFling();
+        off += d;
+        clamp();
+        if (onFrame != null) onFrame.run();
+    }
+
     public boolean isDragging() {
         return dragging;
     }

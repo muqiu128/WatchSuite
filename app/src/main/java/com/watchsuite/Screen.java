@@ -45,6 +45,14 @@ public abstract class Screen {
     }
 
     /**
+     * 侧边旋钮/表冠旋转（旋转输入事件）。delta 为本次旋转量，
+     * 方向约定：正值 = 向下滚列表（内容上移）。返回 true 表示消费了。
+     */
+    public boolean rotary(float delta) {
+        return false;
+    }
+
+    /**
      * 该点是否是「空白」（没有任何按钮/内容）。
      * 只有主界面会用到：空白处滑动 = 返回表盘。
      */

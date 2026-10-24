@@ -261,7 +261,13 @@ public class MusicScreen extends Screen {
         invalidate();
     }
 
+    /** 旋钮滚动列表。 */
     @Override
+    public boolean rotary(float delta) {
+        sc.scrollBy(delta * 96f);
+        invalidate();
+        return true;
+    }
     public boolean touch(int action, float x, float y) {
         if (action == MotionEvent.ACTION_DOWN) {
             if (hasNow() && barHit.contains(x, y)) {
