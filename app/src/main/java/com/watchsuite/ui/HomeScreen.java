@@ -14,12 +14,12 @@ import java.util.Locale;
 /** 首页：存储概览 + 八个功能入口。 */
 public class HomeScreen extends Screen {
 
-    private static final String[] NAMES = {"文件", "应用", "视频", "音乐", "相册", "清理", "分析", "快传"};
-    private static final String[] SUBS = {"浏览 / 安装", "空间占比", "本地视频", "本地音乐",
-            "图片浏览", "缓存垃圾", "空间占用", "网页互传"};
-    private static final String[] GLYPHS = {"文", "应", "播", "音", "图", "清", "析", "传"};
+    private static final String[] NAMES = {"文件", "应用", "视频", "音乐", "相册", "清理分析", "安装", "快传"};
+    private static final String[] SUBS = {"浏览 / 管理", "空间占比", "本地视频", "本地音乐",
+            "图片浏览", "垃圾 / 占用", "安装包一键装", "网页互传"};
+    private static final String[] GLYPHS = {"文", "应", "播", "音", "图", "清", "装", "传"};
     private static final int[] COLORS = {0xFF4DA3FF, 0xFFE070FF, 0xFF58D6C9, 0xFF9B7BFF,
-            0xFF3DDC84, 0xFFFFB454, 0xFFFF8FA3, 0xFF66B3FF};
+            0xFF3DDC84, 0xFFFFB454, 0xFF3DDC84, 0xFF66B3FF};
 
     private final RectF[] tiles = new RectF[8];
     /** 最下面一行的版本信息，点它进关于页。 */
@@ -146,7 +146,7 @@ public class HomeScreen extends Screen {
             case 3: act.push(new MusicScreen(act)); break;
             case 4: act.push(new GalleryScreen(act)); break;
             case 5: act.push(new CleanScreen(act)); break;
-            case 6: act.push(new StorageScreen(act)); break;
+            case 6: act.push(new ApkScreen(act)); break;
             case 7: act.push(new TransferScreen(act)); break;
         }
     }

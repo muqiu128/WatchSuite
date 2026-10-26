@@ -13,6 +13,7 @@ import com.watchsuite.core.Index;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Locale;
 
 /** 空间清理：分类扫描垃圾文件，勾选后一键清理（OPPO 风格）。 */
 public class CleanScreen extends Screen {
@@ -36,7 +37,7 @@ public class CleanScreen extends Screen {
         }
     }
 
-    private static final float L = 46f, R = 420f, TOP = 200f, BOT = 424f;
+    private static final float L = 46f, R = 420f, TOP = 244f, BOT = 424f;
     private static final float ROW_H = 56f, GAP = 8f;
     /** 首尾下沉量。 */
     private static final float PAD = Ui.flowPad(ROW_H, TOP, BOT);
@@ -45,7 +46,9 @@ public class CleanScreen extends Screen {
     private final Scroll sc = new Scroll(this::invalidate);
     private boolean scanning = false;
     private int confirmMode = 0; // 0 无 1 确认
-    private long avail = -1;
+    private long avail = -1, totalSpace = -1;
+    /** 存储分析入口（合并进本页的快捷跳转）。 */
+    private final RectF btnAnalysis = new RectF(60f, 198f, 406f, 234f);
 
     private final RectF btnClean = new RectF(262f, 130f, 372f, 184f);
 
@@ -68,6 +71,7 @@ public class CleanScreen extends Screen {
         act.bg(() -> {
             long[] s = Fs.space();
             act.ui(() -> {
+                totalSpace = s[0];
                 avail = s[1];
                 invalidate();
             });
@@ -158,7 +162,7 @@ public class CleanScreen extends Screen {
 
     @Override
     public void draw(Canvas c) {
-        header(c, "空间清理", scanning ? "扫描中…"
+        header(c, "清理分析", scanning ? "扫描中…"
                 : (avail >= 0 ? "剩 " + Fs.human(avail) : null));
 
         // 汇总卡片
@@ -169,6 +173,18 @@ public class CleanScreen extends Screen {
             Ui.round(c, btnClean, 27f, Ui.ACCENT);
             Ui.textC(c, "清理", btnClean.centerX(), btnClean.centerY() + 8f, 20f, Ui.ON_ACCENT);
         }
+
+        // 存储分析入口：全盘占比 + 跳转
+        Ui.round(c, btnAnalysis, 16f, Ui.SURFACE);
+        float usedRatio = totalSpace > 0 ? (float) Math.min(1.0,
+                (double) (totalSpace - avail) / totalSpace) : 0f;
+        Ui.textL(c, "存储分析", 82f, btnAnalysis.centerY() + 6f, 16f, Ui.TEXT);
+        String rightTxt = totalSpace > 0
+                ? String.format(Locale.US, "全盘已用 %d%% · 剩 %s  ›",
+                Math.round(usedRatio * 100), Fs.human(avail))
+                : "统计中 ›";
+        Ui.textR(c, rightTxt, 388f, btnAnalysis.centerY() + 6f, 13f,
+                totalSpace > 0 ? Ui.tension(usedRatio) : Ui.FAINT);
 
         c.save();
         c.clipRect(0, TOP, W, BOT);
@@ -243,6 +259,10 @@ public class CleanScreen extends Screen {
             if (sc.dragDist() > 12f) return true;
             if (hitBack(x, y)) {
                 act.pop();
+                return true;
+            }
+            if (btnAnalysis.contains(x, y)) {
+                act.push(new StorageScreen(act));
                 return true;
             }
             if (btnClean.contains(x, y) && !scanning && checkedCount() > 0) {
